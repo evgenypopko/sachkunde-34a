@@ -6860,8 +6860,10 @@ SK.laws = [
 
   /* Web-App: Offline-Speicher registrieren (nur über http/https, nicht bei Doppelklick auf die Datei). */
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
-    var reloading = false;
+    var reloading = false, hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener("controllerchange", function () {
+      // Beim allerersten Start (noch kein Offline-Speicher aktiv) nicht neu laden – nur bei einem Update.
+      if (!hadController) { hadController = true; return; }
       if (reloading) return; reloading = true; location.reload();
     });
     navigator.serviceWorker.register("sw.js").then(function (reg) {
