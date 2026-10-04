@@ -1,7 +1,7 @@
 /* Offline-Speicher der Web-App.
    VERSION und FILES werden von "einzeldatei-erstellen.py" automatisch gesetzt –
    nach jeder Änderung an der App das Skript einmal ausführen, dann erst hochladen. */
-const VERSION = "3712f56b7b";
+const VERSION = "15af921074";
 const FILES = ["./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "daten/basis.js", "daten/faelle.js", "daten/fragen-1-recht.js", "daten/fragen-2-datenschutz.js", "daten/fragen-3-bgb.js", "daten/fragen-4-strafrecht.js", "daten/fragen-5-waffen.js", "daten/fragen-6-uvv.js", "daten/fragen-7-menschen.js", "daten/fragen-8-technik.js", "daten/gesetze.js", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png"];
 const CACHE = "sk34a-" + VERSION;
 
