@@ -8,6 +8,9 @@
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var QBY = {};
   SK.questions.forEach(function (q) { QBY[q.id] = q; });
+  /* Ankreuz- und Zuordnungsfragen: Grundlage für Lernrunden, Wiederholungen und Statistik.
+     Freie Antworten gibt es in der schriftlichen Prüfung nicht – sie laufen nur im eigenen Übungsbereich. */
+  var CQ = SK.questions.filter(function (q) { return q.t !== "fa"; });
   var CBY = {};
   SK.cases.forEach(function (c) { CBY[c.id] = c; });
 
@@ -146,11 +149,11 @@
   }
   var STATUS_CHIP = { "neu": "info", "Problemfrage": "bad", "unsicher": "warn", "heute wiederholen": "warn", "morgen wiederholen": "neutral", "sicher": "ok", "geplant": "neutral" };
   function isDue(id) { var r = S.q[id]; return !!(r && r.a && r.due && r.due <= today()); }
-  function dueIds() { return SK.questions.filter(function (q) { return isDue(q.id); }).map(function (q) { return q.id; }); }
-  function errorIds() { return SK.questions.filter(function (q) { var r = S.q[q.id]; return r && r.a && r.lastOk === false; }).map(function (q) { return q.id; }); }
+  function dueIds() { return CQ.filter(function (q) { return isDue(q.id); }).map(function (q) { return q.id; }); }
+  function errorIds() { return CQ.filter(function (q) { var r = S.q[q.id]; return r && r.a && r.lastOk === false; }).map(function (q) { return q.id; }); }
 
   function areaStats(aid) {
-    var qs = SK.questions.filter(function (q) { return q.area === aid; });
+    var qs = CQ.filter(function (q) { return q.area === aid; });
     var tried = 0, ok = 0, safe = 0, cfg = srs();
     qs.forEach(function (q) { var r = S.q[q.id]; if (r && r.a) { tried++; if (r.lastOk) ok++; if (r.lvl >= cfg.safeLevel) safe++; } });
     var p = pct(ok, tried), lamp = "blau";
@@ -164,8 +167,8 @@
     gruen: { c: "ok", t: "ab 80 % – sicher", i: "check" }
   };
   function totals() {
-    var t = { tried: 0, ok: 0, att: 0, c: 0, w: 0, all: SK.questions.length, fav: 0, unsure: 0, skip: 0 };
-    SK.questions.forEach(function (q) {
+    var t = { tried: 0, ok: 0, att: 0, c: 0, w: 0, all: CQ.length, fav: 0, unsure: 0, skip: 0 };
+    CQ.forEach(function (q) {
       var r = S.q[q.id]; if (!r) return;
       if (r.fav) t.fav++; if (r.skip) t.skip += r.skip;
       if (r.a) { t.tried++; if (r.lastOk) t.ok++; t.att += r.a; t.c += r.c; t.w += r.w; if (r.unsure) t.unsure++; }
@@ -189,7 +192,7 @@
     var full = S.exams.filter(function (e) { return !e.short; });
     var last3 = full.slice(-3);
     var lamps = SK.areaOrder.map(function (id) { return areaStats(id); });
-    var prob = SK.questions.filter(function (q) { var r = S.q[q.id]; return r && r.w >= srs().problemWrongCount; });
+    var prob = CQ.filter(function (q) { var r = S.q[q.id]; return r && r.w >= srs().problemWrongCount; });
     var probOk = prob.filter(function (q) { return S.q[q.id].lastOk; }).length;
     var c = [
       { t: "mindestens 3 vollständige Prüfungssimulationen abgeschlossen", ok: full.length >= 3, v: full.length + " von 3" },
@@ -486,7 +489,7 @@
     o += '<div class="grid g2"><section class="card"><h3>Kompakte Zusammenfassung</h3>' + ul(a.summary) + '</section><section class="card"><h3>Lernkarten: wichtigste Begriffe</h3><div id="deck">' + deckHtml() + "</div></section></div>";
     o += '<section class="card"><h3>Lernziele und Unterthemen</h3><ul class="rows subs">';
     Object.keys(a.subs).forEach(function (k) {
-      var n = SK.questions.filter(function (q) { return q.area === id && q.subKey === k; }).length;
+      var n = CQ.filter(function (q) { return q.area === id && q.subKey === k; }).length;
       o += "<li><span><b>" + h(a.subs[k][0]) + '</b><small class="muted">' + h(a.subs[k][1]) + " · " + h(a.subs[k][2]) + '</small></span><button class="btn btn-sm" data-a="start-sub" data-arg="' + id + ":" + k + '">' + n + " Fragen</button></li>";
     });
     o += "</ul></section>";
@@ -512,7 +515,7 @@
   var TYPE_L = { sc: "Single Choice", mc: "Multiple Choice", tf: "Richtig / Falsch", zu: "Zuordnung", fa: "Freie Antwort" };
   function poolFor(cfg) {
     var qs = SK.questions.filter(function (q) {
-      return (!cfg.areas.length || cfg.areas.indexOf(q.area) >= 0) && (!cfg.types.length || cfg.types.indexOf(q.t) >= 0) && (!cfg.sub || q.subKey === cfg.sub);
+      return (!cfg.areas.length || cfg.areas.indexOf(q.area) >= 0) && (cfg.types.length ? cfg.types.indexOf(q.t) >= 0 : q.t !== "fa") && (!cfg.sub || q.subKey === cfg.sub);
     });
     var f = {
       neu: function (q) { return !S.q[q.id] || !S.q[q.id].a; },
@@ -539,14 +542,13 @@
     o += '<section class="card"><h3>Was möchtest du üben?</h3><div class="modes" role="radiogroup" aria-label="Lernart">';
     MODES.forEach(function (m) {
       var n = poolFor({ mode: m[0], areas: LCFG.areas, types: LCFG.types }).length;
-      if (m[0] === "mix") n = SK.questions.length;
       o += '<button class="mode" role="radio" aria-checked="' + (LCFG.mode === m[0]) + '" data-a="lc-mode" data-arg="' + m[0] + '"><b>' + m[1] + '</b><span class="muted">' + m[2] + '</span><span class="num">' + (m[0] === "mix" ? "" : n) + "</span></button>";
     });
     o += '</div></section><section class="card"><h3>Sachgebiete</h3><p class="muted">Ohne Auswahl werden alle Sachgebiete einbezogen.</p><div class="tags">';
     SK.areaOrder.forEach(function (id) { o += '<button class="tag" aria-pressed="' + (LCFG.areas.indexOf(id) >= 0) + '" data-a="lc-area" data-arg="' + id + '">' + SK.areas[id].part + " · " + h(SK.areas[id].short) + "</button>"; });
     o += '</div><h3>Fragetypen</h3><div class="tags">';
     Object.keys(TYPE_L).forEach(function (t) { o += '<button class="tag" aria-pressed="' + (LCFG.types.indexOf(t) >= 0) + '" data-a="lc-type" data-arg="' + t + '">' + TYPE_L[t] + "</button>"; });
-    o += '</div><h3>Umfang</h3><div class="seg" role="radiogroup" aria-label="Anzahl der Fragen">';
+    o += '</div><p class="muted">Freie Antworten kommen nur vor, wenn du sie hier auswählst – in der schriftlichen Prüfung gibt es sie nicht.</p><h3>Umfang</h3><div class="seg" role="radiogroup" aria-label="Anzahl der Fragen">';
     [10, 20, 40, 9999].forEach(function (n) { o += '<button role="radio" aria-checked="' + (LCFG.count === n) + '" data-a="lc-count" data-arg="' + n + '">' + (n === 9999 ? "alle" : n) + "</button>"; });
     o += '</div><div class="actions"><button class="btn btn-primary btn-lg" data-a="lc-go">' + icon("play") + 'Lernrunde starten</button><button class="btn btn-lg" data-a="start-free">Freie Antworten üben</button></div></section>';
     return o;
@@ -793,7 +795,7 @@
     var c = CBY[id];
     if (!c) {
       var o = head("Mündliche Prüfung", "Falltraining", SK.cases.length + " eigene Fallbeispiele. Schwerpunkte der mündlichen Prüfung sind nach § 11 BewachV das Recht der öffentlichen Sicherheit und Ordnung einschließlich Gewerberecht sowie der Umgang mit Menschen.");
-      o += '<section class="card"><h3>Antwortschema für jeden Fall</h3><ol class="schema">' + SK.oralSchema.map(function (s) { return "<li>" + h(s) + "</li>"; }).join("") + '</ol><div class="actions"><button class="btn btn-primary" data-a="oral-next">' + icon("play") + 'Nächsten offenen Fall trainieren</button></div></section><section class="card"><h3>Alle Fallbeispiele</h3><p class="muted">' + oralCount() + " von " + SK.cases.length + ' trainiert</p><ul class="rows qlist">';
+      o += '<section class="card"><h3>Antwortschema für jeden Fall</h3><ol class="schema">' + SK.oralSchema.map(function (s) { return "<li>" + h(s) + "</li>"; }).join("") + '</ol><div class="actions"><button class="btn btn-primary" data-a="oral-next">' + icon("play") + 'Nächsten offenen Fall trainieren</button><button class="btn" data-a="start-free">Freie Antworten üben</button></div><p class="muted">Freie Antworten: kurze Fragen ohne Antwortvorgaben – zum Üben des freien Formulierens für die mündliche Prüfung.</p></section><section class="card"><h3>Alle Fallbeispiele</h3><p class="muted">' + oralCount() + " von " + SK.cases.length + ' trainiert</p><ul class="rows qlist">';
       SK.cases.forEach(function (k) {
         var r = S.oral[k.id];
         o += '<li><a class="qrow" href="#/muendlich/' + k.id + '"><span class="qrow-t">' + h(k.title) + '</span><span class="qrow-m">' + chip(k.topic, "primary") + (r && r.n ? chip(r.n + "× trainiert · " + r.score + " / " + SK.oralChecklist.length, r.score >= 6 ? "ok" : "warn", r.score >= 6 ? "check" : "q") : chip("offen", "info")) + "</span></a></li>";
@@ -917,7 +919,7 @@
     "start-mix": function () { startSession({ mode: "mix", areas: [], types: [], count: 20 }); },
     "start-due": function () { startSession({ mode: "faellig", areas: [], types: [], count: 40 }); },
     "start-new": function () { startSession({ mode: "neu", areas: [], types: [], count: 20 }); },
-    "start-free": function () { startSession({ mode: "alle", areas: LCFG.areas, types: ["fa"], count: 10, title: "Freie Antworten" }); },
+    "start-free": function () { startSession({ mode: "mix", areas: LCFG.areas, types: ["fa"], count: 10, title: "Freie Antworten" }); },
     "start-area": function (id) { startSession({ mode: "mix", areas: [id], types: [], count: 20, title: SK.areas[id].short }); },
     "start-sub": function (arg) { var p = arg.split(":"); startSession({ mode: "mix", areas: [p[0]], sub: p[1], types: [], count: 9999, title: SK.areas[p[0]].subs[p[1]][0] }); },
     learned: function (id) { S.learned[id] = !S.learned[id]; save(); render(); },
