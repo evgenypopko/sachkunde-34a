@@ -1,0 +1,17 @@
+{
+  "name": "Sachkunde 34a Lerntrainer",
+  "short_name": "Sachkunde 34a",
+  "description": "Offline-Lernhilfe für die IHK-Sachkundeprüfung nach § 34a GewO. Eigene Übungsfragen, keine Original-IHK-Fragen.",
+  "lang": "de",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f1ea",
+  "theme_color": "#0f2a3c",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
